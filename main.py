@@ -2,16 +2,15 @@ import streamlit as st
 import requests
 import re
 import openai
- 
+
+# Set the API key globally
 openai.api_key = st.secrets['OPENAI_KEY']
 
 def get_book_details(title):
     """
     Uses the Google Books API to fetch book details such as cover art, authors, and average rating.
     """
-    # Optionally, add a GOOGLE_BOOKS_KEY to your st.secrets if you have one:
     google_books_key = st.secrets.get('GOOGLE_BOOKS_KEY', None)
-    
     params = {
         'q': f'intitle:{title}',
         'maxResults': 1,
@@ -45,15 +44,14 @@ def parse_openai_response(response_text):
     """
     Parses the OpenAI response into a preamble, a list of recommendations, and a postamble.
     Expected format for each recommendation:
-      1. "Book Title" by Author Name - additional info...
+      1. "Book Title" by Author Name - a brief description...
     """
-    # Regex pattern to capture recommendations in the expected format
+    # Regex pattern to capture recommendations
     pattern = r'\d+\.\s"([^"]+)"\sby\s([^-\n]+)-\s(.+)$'
     
     # Split the response into lines
     lines = response_text.strip().split('\n')
     
-    # Identify where recommendations start and end
     start_idx = next((i for i, line in enumerate(lines) if re.match(pattern, line)), None)
     end_idx = next((i for i in reversed(range(len(lines))) if re.match(pattern, lines[i])), None)
     
@@ -61,7 +59,6 @@ def parse_openai_response(response_text):
     recommendations_text = "\n".join(lines[start_idx:end_idx+1]).strip() if start_idx is not None and end_idx is not None else ""
     postamble = "\n".join(lines[end_idx+1:]).strip() if end_idx is not None and end_idx + 1 < len(lines) else ""
     
-    # Extract recommendations using regex
     matches = re.findall(pattern, recommendations_text, re.MULTILINE)
     parsed_results = []
     for match in matches:
@@ -76,13 +73,13 @@ def parse_openai_response(response_text):
 st.title("What Should I Read?")
 
 st.markdown("### Tell us about your reading tastes")
-# A single large text area for a detailed description
+# A single large text area for detailed background on reading preferences
 reading_input = st.text_area(
     "Share your favorite books, genres you enjoy, and what you're looking for in your next read.",
-    placeholder="For example: I love immersive worlds like those in magical realism, classics with a twist, or modern narratives that make me think..."
+    placeholder="For example: I love immersive worlds like magical realism, classics with a twist, or modern narratives that make me think..."
 )
 
-# Optional: a separate input for preferred genres if you want to highlight this
+# Optional: a separate input for preferred genres
 preferred_genres = st.text_input(
     "Preferred genres (optional)",
     placeholder="e.g., Fantasy, Mystery, Sci-Fi"
@@ -92,7 +89,6 @@ if st.button("Get Book Recommendations"):
     if reading_input.strip() == "":
         st.warning("Please share a bit about your reading preferences to get a recommendation!")
     else:
-        # Build the prompt for OpenAI
         genre_text = f"My preferred genres are {preferred_genres}. " if preferred_genres.strip() else ""
         prompt = (
             f"{genre_text}Here is some background about my reading tastes: {reading_input.strip()}.\n\n"
@@ -104,13 +100,16 @@ if st.button("Get Book Recommendations"):
         )
         
         with st.spinner("Fetching recommendations..."):
-            chat_completion = openai.ChatCompletion.create(
-                messages=[
-                    {"role": "user", "content":  "You are a helpful assistant. " + prompt}
-                ],
+            # Use the new OpenAI 1.0.0 interface to call the chat completion endpoint
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "user", "content": "You are a helpful assistant. " + prompt}
+                ],
             )
-        response_text = chat_completion.choices[0].message.content
+        
+        # Extract the content from the response
+        response_text = response['choices'][0]['message']['content']
         st.write("### Recommendation Details")
         preamble, parsed_results, postamble = parse_openai_response(response_text)
         
@@ -118,7 +117,7 @@ if st.button("Get Book Recommendations"):
             st.write(preamble)
             st.markdown("---")
         
-        # Display each recommendation
+        # Display each recommendation with book cover art and details
         for result in parsed_results:
             title = result['title']
             author = result['author']
