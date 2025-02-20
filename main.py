@@ -1,12 +1,9 @@
 import streamlit as st
 import requests
 import re
-from openai import OpenAI
-
-# Initialize the OpenAI client with your API key from st.secrets
-client = OpenAI(
-    api_key=st.secrets['OPENAI_KEY'],
-)
+import openai
+ 
+openai.api_key = st.secrets['OPENAI_KEY']
 
 def get_book_details(title):
     """
@@ -107,13 +104,12 @@ if st.button("Get Book Recommendations"):
         )
         
         with st.spinner("Fetching recommendations..."):
-            chat_completion = client.chat.completions.create(
+            chat_completion = openai.ChatCompletion.create(
                 messages=[
-                    {"role": "user", "content": "You are a helpful assistant. " + prompt},
+                    {"role": "user", "content":  "You are a helpful assistant. " + prompt}
                 ],
                 model="gpt-3.5-turbo",
             )
-        
         response_text = chat_completion.choices[0].message.content
         st.write("### Recommendation Details")
         preamble, parsed_results, postamble = parse_openai_response(response_text)
