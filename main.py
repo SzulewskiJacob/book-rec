@@ -101,7 +101,7 @@ if st.button("Get Book Recommendations"):
         
         with st.spinner("Fetching recommendations..."):
             # Use the new OpenAI 1.0.0 interface to call the chat completion endpoint
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "user", "content": "You are a helpful assistant. " + prompt}
@@ -109,7 +109,7 @@ if st.button("Get Book Recommendations"):
             )
         
         # Extract the content from the response
-        response_text = response['choices'][0]['message']['content']
+        response_text = response['choices'][0].message.content.strip()
         st.write("### Recommendation Details")
         preamble, parsed_results, postamble = parse_openai_response(response_text)
         
